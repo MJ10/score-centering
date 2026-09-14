@@ -1,0 +1,18 @@
+# Direct dependencies; GPU JAX is selected in the README install command.
+jax>=0.11.1
+# Keep the grouped-matmul implementation used in the experiments.
+tokamax==0.0.13
+triton; sys_platform == "linux" and platform_machine == "x86_64"
+optax
+numpy
+ml-dtypes
+transformers
+huggingface-hub
+safetensors
+datasets
+verifiers
+omegaconf
+wandb
+tqdm
+jinja2
+pyyaml

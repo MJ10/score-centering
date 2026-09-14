@@ -1,0 +1,56 @@
+# Minimal publication sweep for plots_png/06b_quant_stale.png.
+# One run per method/TIM combination.
+project: score-centering
+name: 06b_quant_stale
+method: grid
+program: train_rl.py
+command:
+- ${env}
+- bash
+- -c
+- >-
+  cd "${STX_DIR:-.}" && exec python train_rl.py
+  model.source=Qwen/Qwen3-0.6B env.id=countdown env.prompt_format=chat "model.weights_dir=${STX_WEIGHTS_DIR:-$HOME/.cache/stx/weights}"
+  log.project=score-centering run.seed=${STX_SEED:-0}
+  rl.num_prompts=64 rl.seq_len=512
+  eval.num_prompts=64 eval.every_steps=25
+  stop.steps=1200 stop.collapse=0
+  opt.optimizer=sgd opt.lr=0.01
+  ${0#*=} ${1#*=}
+- ${args_no_hyphens}
+parameters:
+  method:
+    values:
+    - rl.is.level=null
+      log.run_name=real-tim-pg-${dtypes.sampler}-s${sampler.staleness}-seed${run.seed}
+    - rl.is.level=token
+      log.run_name=real-tim-naive-is-${dtypes.sampler}-s${sampler.staleness}-seed${run.seed}
+    - rl.is.level=token rl.is.high=2.0 rl.is.outside=clamp
+      log.run_name=real-tim-tis-${dtypes.sampler}-s${sampler.staleness}-seed${run.seed}
+    - rl.is.level=token rl.is.low=0.5 rl.is.high=5.0
+      log.run_name=real-tim-mis-${dtypes.sampler}-s${sampler.staleness}-seed${run.seed}
+    - rl.is.level=token rl.is.low=0.8 rl.is.high=1.2 rl.is.sign=ppo
+      log.run_name=real-tim-ppo-${dtypes.sampler}-s${sampler.staleness}-seed${run.seed}
+    - rl.is.level=token rl.is.low=0.8 rl.is.high=1.28 rl.is.sign=ppo
+      log.run_name=real-tim-dapo-${dtypes.sampler}-s${sampler.staleness}-seed${run.seed}
+    - rl.is.level=seq_mean rl.is.low=0.9997 rl.is.high=1.0004 rl.is.sign=ppo
+      log.run_name=real-tim-gspo-${dtypes.sampler}-s${sampler.staleness}-seed${run.seed}
+    - rl.is.level=seq_sum rl.is.high=1.0 rl.is.outside=clamp rl.is.sign=neg
+      log.run_name=real-tim-topr-${dtypes.sampler}-s${sampler.staleness}-seed${run.seed}
+    - rl.is.level=token rl.is.stat=tv rl.is.high=0.2 rl.is.sign=ppo
+      log.run_name=real-tim-dppo-${dtypes.sampler}-s${sampler.staleness}-seed${run.seed}
+    - rl.is.level=null rl.sc=true sampler.vocab_logprobs=128
+      log.run_name=real-tim-sc-k128-${dtypes.sampler}-s${sampler.staleness}-seed${run.seed}
+    - rl.is.level=token rl.is.high=2.0 rl.is.outside=clamp
+      rl.sc=true sampler.vocab_logprobs=128
+      log.run_name=real-tim-tis-sc-k128-${dtypes.sampler}-s${sampler.staleness}-seed${run.seed}
+    - rl.is.level=token rl.is.low=0.5 rl.is.high=5.0
+      rl.sc=true sampler.vocab_logprobs=128
+      log.run_name=real-tim-mis-sc-k128-${dtypes.sampler}-s${sampler.staleness}-seed${run.seed}
+    - rl.is.level=token rl.is.low=0.8 rl.is.high=1.2 rl.is.sign=ppo
+      rl.sc=true sampler.vocab_logprobs=128
+      log.run_name=real-tim-ppo-sc-k128-${dtypes.sampler}-s${sampler.staleness}-seed${run.seed}
+  tim:
+    values:
+    - dtypes.sampler=int8 sampler.kv_quant_bits=8 sampler.staleness=0
+    - dtypes.sampler=bfloat16 sampler.kv_quant_bits=0 sampler.staleness=64

@@ -1,0 +1,11 @@
+.DS_Store
+.ipynb_checkpoints
+__pycache__
+outputs
+wandb
+private
+deprecated
+debug.py
+logs
+.venv/
+.pytest_cache/

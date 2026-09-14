@@ -1,0 +1,34 @@
+# Minimal publication sweep for plots_png/2b_online_vs_offline.png.
+# One run per regime/reward combination.
+project: score-centering
+name: 2b_online_vs_offline
+method: grid
+program: train_rl.py
+command:
+- ${env}
+- bash
+- -c
+- >-
+  cd "${STX_DIR:-.}" && exec python train_rl.py
+  model.source=Qwen/Qwen3-1.7B env.id=countdown env.prompt_format=chat "model.weights_dir=${STX_WEIGHTS_DIR:-$HOME/.cache/stx/weights}"
+  log.project=score-centering run.seed=${STX_SEED:-0}
+  rl.num_prompts=64 rl.seq_len=1024
+  eval.num_prompts=64 eval.every_steps=20
+  stop.steps=600 stop.collapse=0
+  opt.optimizer=sgd opt.lr=0.01
+  sampler.weight_noise_scale=0.001
+  ${0#*=} ${1#*=}
+- ${args_no_hyphens}
+parameters:
+  regime:
+    values:
+    - sampler.staleness=10_000
+    - sampler.staleness=0
+  reward:
+    values:
+    - rl.reward_mode=plus_zero
+      log.run_name=2b-plus-zero-s${sampler.staleness}-seed${run.seed}
+    - rl.reward_mode=plus_minus
+      log.run_name=2b-plus-minus-s${sampler.staleness}-seed${run.seed}
+    - rl.reward_mode=group_centered
+      log.run_name=2b-group-centered-s${sampler.staleness}-seed${run.seed}

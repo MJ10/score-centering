@@ -1,0 +1,54 @@
+# Minimal publication sweep for plots_png/06b_weight_noise.png.
+# One run per method/noise combination.
+project: score-centering
+name: 06b_weight_noise
+method: grid
+program: train_rl.py
+command:
+- ${env}
+- bash
+- -c
+- >-
+  cd "${STX_DIR:-.}" && exec python train_rl.py
+  model.source=Qwen/Qwen3-0.6B env.id=countdown env.prompt_format=chat "model.weights_dir=${STX_WEIGHTS_DIR:-$HOME/.cache/stx/weights}"
+  log.project=score-centering run.seed=${STX_SEED:-0}
+  rl.num_prompts=64 rl.seq_len=512
+  eval.num_prompts=64 eval.every_steps=20
+  stop.steps=300 stop.collapse=0
+  opt.optimizer=sgd opt.lr=0.01 sampler.staleness=0
+  ${0#*=} ${1#*=}
+- ${args_no_hyphens}
+parameters:
+  method:
+    values:
+    - rl.is.level=null
+      log.run_name=wn-pg-${sampler.weight_noise_scale}-seed${run.seed}
+    - rl.is.level=token
+      log.run_name=wn-naive-is-${sampler.weight_noise_scale}-seed${run.seed}
+    - rl.is.level=token rl.is.high=2.0 rl.is.outside=clamp
+      log.run_name=wn-tis-${sampler.weight_noise_scale}-seed${run.seed}
+    - rl.is.level=token rl.is.low=0.5 rl.is.high=5.0
+      log.run_name=wn-mis-${sampler.weight_noise_scale}-seed${run.seed}
+    - rl.is.level=token rl.is.low=0.8 rl.is.high=1.2 rl.is.sign=ppo
+      log.run_name=wn-ppo-${sampler.weight_noise_scale}-seed${run.seed}
+    - rl.is.level=token rl.is.low=0.8 rl.is.high=1.28 rl.is.sign=ppo
+      log.run_name=wn-dapo-${sampler.weight_noise_scale}-seed${run.seed}
+    - rl.is.level=seq_mean rl.is.low=0.9997 rl.is.high=1.0004 rl.is.sign=ppo
+      log.run_name=wn-gspo-${sampler.weight_noise_scale}-seed${run.seed}
+    - rl.is.level=seq_sum rl.is.high=1.0 rl.is.outside=clamp rl.is.sign=neg
+      log.run_name=wn-topr-${sampler.weight_noise_scale}-seed${run.seed}
+    - rl.is.level=token rl.is.stat=tv rl.is.high=0.2 rl.is.sign=ppo
+      log.run_name=wn-dppo-${sampler.weight_noise_scale}-seed${run.seed}
+    - rl.is.level=null rl.sc=true sampler.vocab_logprobs=128
+      log.run_name=wn-sc-k128-${sampler.weight_noise_scale}-seed${run.seed}
+    - rl.is.level=token rl.is.high=2.0 rl.is.outside=clamp
+      rl.sc=true sampler.vocab_logprobs=128
+      log.run_name=wn-tis-sc-k128-${sampler.weight_noise_scale}-seed${run.seed}
+    - rl.is.level=token rl.is.low=0.5 rl.is.high=5.0
+      rl.sc=true sampler.vocab_logprobs=128
+      log.run_name=wn-mis-sc-k128-${sampler.weight_noise_scale}-seed${run.seed}
+  noise:
+    values:
+    - sampler.weight_noise_scale=0.01
+    - sampler.weight_noise_scale=0.02
+    - sampler.weight_noise_scale=0.05

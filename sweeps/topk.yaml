@@ -1,0 +1,96 @@
+# Minimal publication sweep for plots_png/topk.png.
+# Every plotted arm is run here, including arms duplicated in other figures.
+project: score-centering
+name: topk
+method: grid
+program: train_rl.py
+command:
+- ${env}
+- bash
+- -c
+- >-
+  cd "${STX_DIR:-.}" && exec python train_rl.py
+  "model.weights_dir=${STX_WEIGHTS_DIR:-$HOME/.cache/stx/weights}"
+  log.project=score-centering run.seed=${STX_SEED:-0}
+  stop.collapse=0 opt.optimizer=sgd opt.lr=0.01
+  ${0#*=} ${1#*=}
+- ${args_no_hyphens}
+parameters:
+  a_setup:
+    values:
+    # Qwen3-0.6B: synthetic weight noise.
+    - model.source=Qwen/Qwen3-0.6B env.id=countdown env.prompt_format=chat
+      rl.num_prompts=64 rl.seq_len=512
+      eval.num_prompts=64 eval.every_steps=20 stop.steps=300
+      dtypes.sampler=bfloat16 sampler.kv_quant_bits=0 sampler.staleness=0
+      sampler.weight_noise_scale=0.01 rl.is.level=null rl.sc=true
+      log.run_name=topk-06b-wn0.01-k${sampler.vocab_logprobs}-seed${run.seed}
+    - model.source=Qwen/Qwen3-0.6B env.id=countdown env.prompt_format=chat
+      rl.num_prompts=64 rl.seq_len=512
+      eval.num_prompts=64 eval.every_steps=20 stop.steps=300
+      dtypes.sampler=bfloat16 sampler.kv_quant_bits=0 sampler.staleness=0
+      sampler.weight_noise_scale=0.02 rl.is.level=null rl.sc=true
+      log.run_name=topk-06b-wn0.02-k${sampler.vocab_logprobs}-seed${run.seed}
+    - model.source=Qwen/Qwen3-0.6B env.id=countdown env.prompt_format=chat
+      rl.num_prompts=64 rl.seq_len=512
+      eval.num_prompts=64 eval.every_steps=20 stop.steps=300
+      dtypes.sampler=bfloat16 sampler.kv_quant_bits=0 sampler.staleness=0
+      sampler.weight_noise_scale=0.05 rl.is.level=null rl.sc=true
+      log.run_name=topk-06b-wn0.05-k${sampler.vocab_logprobs}-seed${run.seed}
+
+    # Qwen3-0.6B: quantization and staleness.
+    - model.source=Qwen/Qwen3-0.6B env.id=countdown env.prompt_format=chat
+      rl.num_prompts=64 rl.seq_len=512
+      eval.num_prompts=64 eval.every_steps=25 stop.steps=1200
+      dtypes.sampler=int8 sampler.kv_quant_bits=8 sampler.staleness=0
+      sampler.weight_noise_scale=0 rl.is.level=null rl.sc=true
+      log.run_name=topk-06b-int8-k${sampler.vocab_logprobs}-seed${run.seed}
+    - model.source=Qwen/Qwen3-0.6B env.id=countdown env.prompt_format=chat
+      rl.num_prompts=64 rl.seq_len=512
+      eval.num_prompts=64 eval.every_steps=25 stop.steps=1200
+      dtypes.sampler=bfloat16 sampler.kv_quant_bits=0 sampler.staleness=64
+      sampler.weight_noise_scale=0 rl.is.level=token rl.is.high=2.0
+      rl.is.outside=clamp rl.sc=true
+      log.run_name=topk-06b-stale64-tis-sc-k${sampler.vocab_logprobs}-seed${run.seed}
+    - model.source=Qwen/Qwen3-0.6B env.id=countdown env.prompt_format=chat
+      rl.num_prompts=64 rl.seq_len=512
+      eval.num_prompts=64 eval.every_steps=25 stop.steps=1200
+      dtypes.sampler=bfloat16 sampler.kv_quant_bits=0 sampler.staleness=64
+      sampler.weight_noise_scale=0 rl.is.level=token
+      rl.is.low=0.5 rl.is.high=5.0 rl.sc=true
+      log.run_name=topk-06b-stale64-mis-sc-k${sampler.vocab_logprobs}-seed${run.seed}
+
+    # Qwen3-30B-A3B: three quantization regimes.
+    - model.source=Qwen/Qwen3-30B-A3B-Base env.id=intellect-math
+      env.prompt_format=text
+      env.args={strict:true,solve_rate_field:solve_rate_qwen_r1_distill_7b,min_solve_rate:0.125,max_solve_rate:0.875}
+      rl.num_prompts=16 rl.seq_len=1024
+      eval.num_prompts=128 eval.every_steps=50 stop.steps=800
+      sampler.shard.tp=4 sampler.weight_quant=null sampler.staleness=0
+      sampler.weight_noise_scale=0 dtypes.sampler=float8_e4m3fn
+      sampler.kv_quant_bits=fp8 rl.is.level=null rl.sc=true
+      log.run_name=topk-30b-fp8kv8-k${sampler.vocab_logprobs}-seed${run.seed}
+    - model.source=Qwen/Qwen3-30B-A3B-Base env.id=intellect-math
+      env.prompt_format=text
+      env.args={strict:true,solve_rate_field:solve_rate_qwen_r1_distill_7b,min_solve_rate:0.125,max_solve_rate:0.875}
+      rl.num_prompts=16 rl.seq_len=1024
+      eval.num_prompts=128 eval.every_steps=50 stop.steps=800
+      sampler.shard.tp=4 sampler.weight_quant=null sampler.staleness=0
+      sampler.weight_noise_scale=0 dtypes.sampler=float8_e4m3fn
+      sampler.kv_quant_bits=fp4 rl.is.level=null rl.sc=true
+      log.run_name=topk-30b-fp8kv4-k${sampler.vocab_logprobs}-seed${run.seed}
+    - model.source=Qwen/Qwen3-30B-A3B-Base env.id=intellect-math
+      env.prompt_format=text
+      env.args={strict:true,solve_rate_field:solve_rate_qwen_r1_distill_7b,min_solve_rate:0.125,max_solve_rate:0.875}
+      rl.num_prompts=16 rl.seq_len=1024
+      eval.num_prompts=128 eval.every_steps=50 stop.steps=800
+      sampler.shard.tp=4 sampler.weight_quant=null sampler.staleness=0
+      sampler.weight_noise_scale=0 dtypes.sampler=int8
+      sampler.kv_quant_bits=4 rl.is.level=null rl.sc=true
+      log.run_name=topk-30b-int8kv4-k${sampler.vocab_logprobs}-seed${run.seed}
+  b_topk:
+    values:
+    - sampler.vocab_logprobs=32
+    - sampler.vocab_logprobs=128
+    - sampler.vocab_logprobs=full
+

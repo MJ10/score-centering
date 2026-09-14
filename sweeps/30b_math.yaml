@@ -1,0 +1,57 @@
+# Minimal publication sweep for plots_png/30b_math.png.
+# One run per method/quantization combination.
+project: score-centering
+name: 30b_math
+method: grid
+program: train_rl.py
+command:
+- ${env}
+- bash
+- -c
+- >-
+  cd "${STX_DIR:-.}" && exec python train_rl.py
+  model.source=Qwen/Qwen3-30B-A3B-Base "model.weights_dir=${STX_WEIGHTS_DIR:-$HOME/.cache/stx/weights}"
+  log.project=score-centering run.seed=${STX_SEED:-0}
+  env.id=intellect-math env.prompt_format=text
+  'env.args={strict:true,solve_rate_field:solve_rate_qwen_r1_distill_7b,min_solve_rate:0.125,max_solve_rate:0.875}'
+  rl.seq_len=1024 eval.num_prompts=128 eval.every_steps=50
+  stop.steps=800 stop.collapse=0
+  opt.optimizer=sgd opt.lr=0.01 sampler.shard.tp=4
+  sampler.weight_quant=null sampler.staleness=0
+  ${0#*=} ${1#*=}
+- ${args_no_hyphens}
+parameters:
+  method:
+    values:
+    - rl.is.level=null rl.sc=false sampler.vocab_logprobs=null
+      log.run_name=30b-pg-${dtypes.sampler}-kv${sampler.kv_quant_bits}-seed${run.seed}
+    - rl.is.level=token rl.sc=false sampler.vocab_logprobs=null
+      log.run_name=30b-naive-is-${dtypes.sampler}-kv${sampler.kv_quant_bits}-seed${run.seed}
+    - rl.is.level=token rl.is.high=2.0 rl.is.outside=clamp
+      rl.sc=false sampler.vocab_logprobs=null
+      log.run_name=30b-tis-${dtypes.sampler}-kv${sampler.kv_quant_bits}-seed${run.seed}
+    - rl.is.level=token rl.is.low=0.5 rl.is.high=5.0
+      rl.sc=false sampler.vocab_logprobs=null
+      log.run_name=30b-mis-${dtypes.sampler}-kv${sampler.kv_quant_bits}-seed${run.seed}
+    - rl.is.level=token rl.is.low=0.8 rl.is.high=1.2 rl.is.sign=ppo
+      rl.sc=false sampler.vocab_logprobs=null
+      log.run_name=30b-ppo-${dtypes.sampler}-kv${sampler.kv_quant_bits}-seed${run.seed}
+    - rl.is.level=token rl.is.low=0.8 rl.is.high=1.28 rl.is.sign=ppo
+      rl.sc=false sampler.vocab_logprobs=null
+      log.run_name=30b-dapo-${dtypes.sampler}-kv${sampler.kv_quant_bits}-seed${run.seed}
+    - rl.is.level=seq_mean rl.is.low=0.9997 rl.is.high=1.0004 rl.is.sign=ppo
+      rl.sc=false sampler.vocab_logprobs=null
+      log.run_name=30b-gspo-${dtypes.sampler}-kv${sampler.kv_quant_bits}-seed${run.seed}
+    - rl.is.level=seq_sum rl.is.high=1.0 rl.is.outside=clamp rl.is.sign=neg
+      rl.sc=false sampler.vocab_logprobs=null
+      log.run_name=30b-topr-${dtypes.sampler}-kv${sampler.kv_quant_bits}-seed${run.seed}
+    - rl.is.level=token rl.is.stat=tv rl.is.high=0.2 rl.is.sign=ppo
+      rl.sc=false sampler.vocab_logprobs=null
+      log.run_name=30b-dppo-${dtypes.sampler}-kv${sampler.kv_quant_bits}-seed${run.seed}
+    - rl.is.level=null rl.sc=true sampler.vocab_logprobs=128
+      log.run_name=30b-sc-k128-${dtypes.sampler}-kv${sampler.kv_quant_bits}-seed${run.seed}
+  quantization:
+    values:
+    - dtypes.sampler=float8_e4m3fn sampler.kv_quant_bits=fp8
+    - dtypes.sampler=float8_e4m3fn sampler.kv_quant_bits=fp4
+    - dtypes.sampler=int8 sampler.kv_quant_bits=4
