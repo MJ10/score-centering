@@ -9,9 +9,9 @@ command:
 - bash
 - -c
 - >-
-  cd "${STX_DIR:-.}" && exec python train_rl.py
-  "model.weights_dir=${STX_WEIGHTS_DIR:-$HOME/.cache/stx/weights}"
-  log.project=score-centering run.seed=${STX_SEED:-0}
+  cd "${POSTAX_DIR:-.}" && exec python train_rl.py
+  "model.weights_dir=${POSTAX_WEIGHTS_DIR:-$HOME/.cache/postax/weights}"
+  log.project=score-centering run.seed=${POSTAX_SEED:-0}
   stop.collapse=0 opt.optimizer=sgd opt.lr=0.01
   ${0#*=} ${1#*=}
 - ${args_no_hyphens}

@@ -23,7 +23,7 @@ def _load_config(model_id, hf_ckpt_dir):
     return json.loads(Path(path).read_text())
 
 
-def load(model_id="Qwen/Qwen3-0.6B-Base", hf_ckpt_dir="~/.cache/stx/weights", *args, **kwargs):
+def load(model_id="Qwen/Qwen3-0.6B-Base", hf_ckpt_dir="~/.cache/postax/weights", *args, **kwargs):
     cfg = _load_config(model_id, hf_ckpt_dir)
     model_type = cfg.get("model_type")
     if model_type not in LOADERS:

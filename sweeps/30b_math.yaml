@@ -9,9 +9,9 @@ command:
 - bash
 - -c
 - >-
-  cd "${STX_DIR:-.}" && exec python train_rl.py
-  model.source=Qwen/Qwen3-30B-A3B-Base "model.weights_dir=${STX_WEIGHTS_DIR:-$HOME/.cache/stx/weights}"
-  log.project=score-centering run.seed=${STX_SEED:-0}
+  cd "${POSTAX_DIR:-.}" && exec python train_rl.py
+  model.source=Qwen/Qwen3-30B-A3B-Base "model.weights_dir=${POSTAX_WEIGHTS_DIR:-$HOME/.cache/postax/weights}"
+  log.project=score-centering run.seed=${POSTAX_SEED:-0}
   env.id=intellect-math env.prompt_format=text
   'env.args={strict:true,solve_rate_field:solve_rate_qwen_r1_distill_7b,min_solve_rate:0.125,max_solve_rate:0.875}'
   rl.seq_len=1024 eval.num_prompts=128 eval.every_steps=50

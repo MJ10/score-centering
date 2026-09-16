@@ -355,7 +355,7 @@ def _random_weights(cfg, key, dp_shard=False):
     return weights
 
 
-def load(model_id="Qwen/Qwen3-0.6B-Base", hf_ckpt_dir="~/.cache/stx/weights", tp_size=1, dp_shard=False, init="pretrained", hidden_size=None, num_hidden_layers=None, key=None):
+def load(model_id="Qwen/Qwen3-0.6B-Base", hf_ckpt_dir="~/.cache/postax/weights", tp_size=1, dp_shard=False, init="pretrained", hidden_size=None, num_hidden_layers=None, key=None):
     if jax.device_count() % tp_size != 0:
         raise ValueError(f"tp_size={tp_size} does not divide device_count={jax.device_count()}")
     mesh = jax.make_mesh((jax.device_count() // tp_size, tp_size), ("data", "model"), axis_types=(AxisType.Explicit, AxisType.Explicit))

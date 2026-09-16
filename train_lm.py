@@ -18,7 +18,7 @@ import utils
 DEFAULT_CFG = """
 model:
   source: null
-  weights_dir: ~/.cache/stx/weights
+  weights_dir: ~/.cache/postax/weights
   init: pretrained
   tp_size: 1
   dp_shard: false
@@ -48,7 +48,7 @@ opt:
   warmup_tokens: 10_000_000
   ema_halflife: null
 log:
-  project: stx
+  project: postax
   wandb_mode: online
   dir: ./outputs
   run_name: null

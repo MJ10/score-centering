@@ -1,4 +1,4 @@
-"""Independent Hugging Face sanity check for the 30B STX sampler."""
+"""Independent Hugging Face sanity check for the 30B postax sampler."""
 import argparse
 import math
 from pathlib import Path

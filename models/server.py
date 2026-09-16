@@ -15,7 +15,7 @@ from . import sampling
 app = FastAPI()
 _model = _mesh = _key = _http_server = _http_thread = None
 _seq_len = _batch_size = 0
-_model_id = "stx"
+_model_id = "postax"
 _prompt_format = "chat"
 _chat_template_kwargs = {}
 
@@ -31,7 +31,7 @@ class Request(BaseModel):
 @app.get("/v1/models")
 async def list_models():
     return {"object": "list", "data": [{
-        "id": _model_id, "object": "model", "owned_by": "stx"}]}
+        "id": _model_id, "object": "model", "owned_by": "postax"}]}
 
 
 @app.post("/v1/chat/completions")
@@ -93,7 +93,7 @@ async def chat_completions(request: Request):
 
 
 def start(
-        model, *, seq_len, port=0, model_id="stx", seed=0,
+        model, *, seq_len, port=0, model_id="postax", seed=0,
         prompt_format="auto", chat_template_kwargs=None):
     global _model, _mesh, _key, _seq_len, _batch_size, _model_id
     global _prompt_format, _chat_template_kwargs

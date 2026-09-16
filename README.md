@@ -3,7 +3,7 @@
 Code accompanying **Score Centering Stabilizes Off-policy Reinforcement Learning**,
 by Martin Marek and Max Ryabinin.
 
-Score centering was developed in **stx** (pronounced **“stax”**), a JAX
+Score centering was developed in **postax**, a JAX
 language-model framework I built for my research. This release includes the full
 framework, with features beyond score centering:
 
@@ -45,7 +45,7 @@ python train_rl.py model.source=Qwen/Qwen3-0.6B \
 ```
 
 Use `log.wandb_mode=disabled` to run without W&B. Models are cached in
-`~/.cache/stx/weights`; configurations and metrics go to `outputs/`.
+`~/.cache/postax/weights`; configurations and metrics go to `outputs/`.
 Pretraining/SFT and DPO use `train_lm.py` and `train_dpo.py`.
 
 ## Paper sweeps

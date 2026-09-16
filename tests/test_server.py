@@ -16,12 +16,12 @@ from models import server
 async def request(port):
     client = AsyncOpenAI(
         base_url=f"http://localhost:{port}/v1",
-        api_key="stx",
+        api_key="postax",
         max_retries=0,
     )
     try:
         return await client.chat.completions.create(
-            model="stx",
+            model="postax",
             messages=[{"role": "user", "content": "Count to three."}],
             max_tokens=4,
         )
@@ -30,7 +30,7 @@ async def request(port):
 
 
 def main():
-    checkpoint_dir = "~/.cache/stx/weights"
+    checkpoint_dir = "~/.cache/postax/weights"
     model = models.load(
         "Qwen/Qwen3-0.6B-Base",
         checkpoint_dir,

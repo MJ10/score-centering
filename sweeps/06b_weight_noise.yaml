@@ -9,9 +9,9 @@ command:
 - bash
 - -c
 - >-
-  cd "${STX_DIR:-.}" && exec python train_rl.py
-  model.source=Qwen/Qwen3-0.6B env.id=countdown env.prompt_format=chat "model.weights_dir=${STX_WEIGHTS_DIR:-$HOME/.cache/stx/weights}"
-  log.project=score-centering run.seed=${STX_SEED:-0}
+  cd "${POSTAX_DIR:-.}" && exec python train_rl.py
+  model.source=Qwen/Qwen3-0.6B env.id=countdown env.prompt_format=chat "model.weights_dir=${POSTAX_WEIGHTS_DIR:-$HOME/.cache/postax/weights}"
+  log.project=score-centering run.seed=${POSTAX_SEED:-0}
   rl.num_prompts=64 rl.seq_len=512
   eval.num_prompts=64 eval.every_steps=20
   stop.steps=300 stop.collapse=0

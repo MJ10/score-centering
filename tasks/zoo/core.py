@@ -25,7 +25,7 @@ from tasks.prefill.styles import (
 # Constants
 
 EVAL_BUNDLE_URL = "https://karpathy-public.s3.us-west-2.amazonaws.com/eval_bundle.zip"
-CACHE_DIR = Path("~/.cache/stx").expanduser()
+CACHE_DIR = Path("~/.cache/postax").expanduser()
 
 # ---------------------------------------------------------------------------
 # Jinja2 templates

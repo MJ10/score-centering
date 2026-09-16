@@ -17,7 +17,7 @@ def run_training(
         is_inside="ratio", is_sign="both", minibatches=1, kv_quant_bits=0,
         weight_quant=None, weight_quant_group=0, eval_enabled=False,
         vocab_logprobs=16):
-    weights_dir = os.path.expanduser("~/.cache/stx/weights")
+    weights_dir = os.path.expanduser("~/.cache/postax/weights")
     command = [
         sys.executable,
         str(ROOT / "train_rl.py"),

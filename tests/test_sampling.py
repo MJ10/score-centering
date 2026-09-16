@@ -14,7 +14,7 @@ from models import sampling
 
 
 def main():
-    checkpoint_dir = "~/.cache/stx/weights"
+    checkpoint_dir = "~/.cache/postax/weights"
     model = models.load(
         "Qwen/Qwen3-0.6B-Base",
         checkpoint_dir,

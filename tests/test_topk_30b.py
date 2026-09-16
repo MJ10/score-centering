@@ -2,10 +2,10 @@
 
 Example (run from a full 8-GPU node):
 
-    python tests/test_topk_30b.py --weights-dir=~/.cache/stx/weights \
+    python tests/test_topk_30b.py --weights-dir=~/.cache/postax/weights \
         --max-mass-error=1e-6
 
-Set STX_IMPORT_ROOT to compare another deployed STX tree using this checker.
+Set POSTAX_IMPORT_ROOT to compare another deployed postax tree using this checker.
 The test deliberately records both the full distribution and transported head
 for a tiny batch; it is a validation tool, not a training configuration.
 """
@@ -18,7 +18,7 @@ from pathlib import Path
 
 
 IMPORT_ROOT = Path(os.environ.get(
-    "STX_IMPORT_ROOT", Path(__file__).resolve().parents[1]))
+    "POSTAX_IMPORT_ROOT", Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(IMPORT_ROOT))
 
 import jax
@@ -32,7 +32,7 @@ from tasks import rollout
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--weights-dir", default="~/.cache/stx/weights")
+    parser.add_argument("--weights-dir", default="~/.cache/postax/weights")
     parser.add_argument("--seq-len", type=int, default=48)
     parser.add_argument("--tp", type=int, default=4)
     parser.add_argument("--max-mass-error", type=float)

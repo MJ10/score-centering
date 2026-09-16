@@ -27,7 +27,7 @@ from tasks import rollout
 DEFAULT_CFG = """
 model:
   source: Qwen/Qwen3-1.7B
-  weights_dir: ~/.cache/stx/weights
+  weights_dir: ~/.cache/postax/weights
   init: pretrained
   hidden_size: null
   num_hidden_layers: null
@@ -91,7 +91,7 @@ eval:
   num_prompts: 128  # multiple of rl.num_prompts; held out from train if the env has no eval split
   every_steps: 50
 log:
-  project: stx-rl
+  project: postax-rl
   wandb_mode: online
   dir: ./outputs
   run_name: null
