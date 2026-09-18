@@ -1,6 +1,8 @@
 # Score Centering
 
-Code accompanying **Score Centering Stabilizes Off-policy Reinforcement Learning**, by Martin Marek and Max Ryabinin.
+Official repository for the paper *[Score Centering Stabilizes Off-policy Reinforcement Learning](https://arxiv.org/abs/2609.20807)*
+
+[![](https://img.shields.io/badge/arXiv-2609.20807-b31b1b.svg)](https://arxiv.org/abs/2609.20807)
 
 Score centering stabilizes RL under training-inference mismatch (TIM) by canceling *drift*. Score Centering can be used alone or applied on top of importance sampling.
 
