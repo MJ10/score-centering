@@ -147,3 +147,18 @@ uv pip install -r requirements.txt "intellect-math==0.1.7" \
   --extra-index-url https://hub.primeintellect.ai/primeintellect/simple/
 ```
 
+## Citation
+
+If you use Score Centering in your work or find our results useful, please consider citing our paper as follows:
+
+```
+@misc{marek2026scorecentering,
+      title={Score Centering Stabilizes Off-policy Reinforcement Learning}, 
+      author={Martin Marek and Max Ryabinin},
+      year={2026},
+      eprint={2609.20807},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2609.20807}, 
+}
+```
