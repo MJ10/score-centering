@@ -19,9 +19,17 @@ if (( $# == 0 )); then
     exit 2
 fi
 
-# cluv sets SBATCH_OUTPUT to <results_path>/<cluster>_%j/slurm-%j.out.
-output_pattern="${SBATCH_OUTPUT:?This job script must be submitted through cluv}"
-run_dir="${output_pattern%/*}"
+# cluv points the job's stdout at <results_path>/<cluster>_<jobid>/slurm-<jobid>.out
+# (via --output in cluv >= 0.1, via $SBATCH_OUTPUT in older versions). The run
+# directory is that file's parent.
+output_path="$(scontrol show job "${SLURM_JOB_ID:?not running under Slurm}" -o 2>/dev/null \
+    | tr ' ' '\n' | sed -n 's/^StdOut=//p' | head -n 1 || true)"
+output_path="${output_path:-${SBATCH_OUTPUT:-}}"
+if [[ -z "$output_path" ]]; then
+    echo "Could not determine the job's output path; submit this script through cluv." >&2
+    exit 2
+fi
+run_dir="${output_path%/*}"
 run_dir="${run_dir//%j/${SLURM_JOB_ID}}"
 run_dir="${run_dir//%A/${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}}}"
 run_dir="${run_dir//%a/${SLURM_ARRAY_TASK_ID:-0}}"
