@@ -132,20 +132,45 @@ Paper configurations are in [`sweeps/`](sweeps/). Each YAML is a W&B grid sweep 
 
 ## Install
 
-On Linux with CUDA, run from the repository root:
+The project is a [uv](https://docs.astral.sh/uv/) project pinned to Python 3.13. From the repository root:
 
 ```bash
-uv venv --python 3.13
-source .venv/bin/activate
-uv pip install -r requirements.txt "jax[cuda12]"
+uv sync
 ```
 
-The math experiments additionally need:
+On Linux this installs `jax[cuda12]`; elsewhere it installs CPU JAX. The math experiments additionally need the INTELLECT-2 environment:
 
 ```bash
-uv pip install -r requirements.txt "intellect-math==0.1.7" \
-  --extra-index-url https://hub.primeintellect.ai/primeintellect/simple/
+uv sync --extra math
 ```
+
+Run any command in the environment with `uv run`, e.g. `uv run python train_rl.py ...`.
+
+## Running on Slurm clusters with cluv
+
+The repo is set up for [cluv](https://github.com/mila-iqia/cluv), which syncs a uv project to one or more Slurm clusters over SSH and submits jobs there. Cluster settings (accounts, partitions, GPUs, environment variables) live in the `[tool.cluv]` section of [`pyproject.toml`](pyproject.toml); the job script is [`scripts/job.sh`](scripts/job.sh).
+
+```bash
+uv tool install cluster-uv        # once
+cluv login                        # open SSH connections to the configured clusters
+cluv sync                         # push, clone/pull on each cluster, `uv sync`, fetch results
+cluv submit mila -- python train_rl.py model.source=Qwen/Qwen3-0.6B \
+  env.id=countdown env.prompt_format=chat rl.sc=true sampler.vocab_logprobs=128
+```
+
+Flags placed before `--` go to `sbatch` and override the defaults in `pyproject.toml`, e.g. `cluv submit fir --time=12:00:00 --gpus-per-node=h100:4 -- python train_rl.py ...`. Use `cluv submit first -- ...` to submit to every connected cluster and keep the first job that starts.
+
+Each job runs in its own directory `$SCRATCH/score-centering/<cluster>_<jobid>/` containing the Slurm log; the job script points `log.dir` there, so the run's `config.json` and metrics land next to it. `cluv sync` rsyncs these directories back to `$SCRATCH/score-centering` locally (`~/scratch/score-centering` on a laptop).
+
+Compute nodes on the DRAC clusters have no internet access, so jobs there default to `UV_OFFLINE=1`, `WANDB_MODE=offline` and `HF_HUB_OFFLINE=1` (Mila overrides these to online). Before submitting to an offline cluster, download the weights on its login node:
+
+```bash
+cluv run tamia python scripts/prefetch.py Qwen/Qwen3-0.6B
+```
+
+This fills `$SCRATCH/postax/weights` (`POSTAX_WEIGHTS_DIR`), which the job script passes as `model.weights_dir`. Upload offline W&B runs afterwards with `wandb sync`.
+
+The W&B sweeps in [`sweeps/`](sweeps/) run unchanged through the same job script: create the sweep locally with `wandb sweep sweeps/06b_quant_stale.yaml`, then launch agents with `cluv submit mila -- wandb agent <entity>/score-centering/<sweep-id>`.
 
 ## Citation
 

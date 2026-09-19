@@ -1,0 +1,102 @@
+[project]
+name = "score-centering"
+version = "0.1.0"
+description = "Score Centering Stabilizes Off-policy Reinforcement Learning (postax)"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    # GPU JAX on Linux clusters; CPU JAX elsewhere (e.g. a macOS laptop).
+    # Pinned: jax 0.11.2 removed jax.experimental.hijax.HiPrimitive, which tokamax 0.0.13 imports.
+    "jax[cuda12]==0.11.1; sys_platform == 'linux'",
+    "jax==0.11.1; sys_platform != 'linux'",
+    # Keep the grouped-matmul implementation used in the experiments.
+    "tokamax==0.0.13",
+    "triton; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "optax",
+    "numpy",
+    "ml-dtypes",
+    "transformers",
+    "huggingface-hub",
+    "safetensors",
+    "datasets",
+    "verifiers",
+    "omegaconf",
+    "wandb",
+    "tqdm",
+    "jinja2",
+    "pyyaml",
+]
+
+[project.optional-dependencies]
+# INTELLECT-2 math environment used by sweeps/30b_math.yaml.
+math = ["intellect-math==0.1.7"]
+
+[dependency-groups]
+dev = ["pytest"]
+
+[tool.uv]
+# Flat research repo (train_*.py at the root); nothing to build or install.
+package = false
+
+[tool.uv.sources]
+intellect-math = { index = "primeintellect" }
+
+[[tool.uv.index]]
+name = "primeintellect"
+url = "https://hub.primeintellect.ai/primeintellect/simple/"
+explicit = true
+
+
+###  --------------   CLUV CONFIG   --------------  ###
+# https://github.com/mila-iqia/cluv
+#
+#   cluv login              open SSH connections to the clusters below
+#   cluv sync               push, clone/pull on each cluster, `uv sync`, fetch results
+#   cluv submit <cluster> -- python train_rl.py key=value ...
+#
+# Each job gets its own directory $SCRATCH/score-centering/<cluster>_<jobid>/
+# holding the Slurm log and (via log.dir) the run's config.json and metrics.
+# `cluv sync` rsyncs those directories back to $SCRATCH/score-centering locally.
+
+[tool.cluv]
+job_script_path = "scripts/job.sh"
+results_path = "$SCRATCH/score-centering"
+results_symlink = "logs"
+
+[tool.cluv.local]
+# $SCRATCH is not set on a laptop; fetched results land here instead.
+env = { SCRATCH = "$HOME/scratch" }
+
+[tool.cluv.env]
+# Compute nodes on DRAC clusters have no internet: assume offline by default and
+# override on clusters that do. W&B runs written offline can be uploaded later
+# with `wandb sync`.
+UV_OFFLINE = "1"
+WANDB_MODE = "offline"
+HF_HUB_OFFLINE = "1"
+HF_DATASETS_OFFLINE = "1"
+# Keep model weights and the HF cache on $SCRATCH; download them on a login node
+# first with `uv run python scripts/prefetch.py <model_id>`.
+POSTAX_WEIGHTS_DIR = "$SCRATCH/postax/weights"
+HF_HOME = "$SCRATCH/huggingface"
+
+[tool.cluv.sbatch_args]
+nodes = 1
+ntasks = 1
+cpus-per-task = 16
+mem = "128G"
+time = "3:00:00"
+
+[tool.cluv.clusters.mila]
+env = { UV_OFFLINE = "0", WANDB_MODE = "online", HF_HUB_OFFLINE = "0", HF_DATASETS_OFFLINE = "0" }
+sbatch_args = { partition = "main", gpus-per-node = "a100l:2" }
+
+[tool.cluv.clusters.tamia]
+sbatch_args = { account = "aip-bengioy", partition = "gpubase_bynode_b2", gpus-per-node = "h100:4" }
+
+[tool.cluv.clusters.fir]
+# One submission per allocation; cluv keeps the first to start and cancels the rest.
+sbatch_args = [
+    { account = "rrg-bengioy-ad_gpu", partition = "gpubase_bygpu_b2", gpus-per-node = "h100:2" },
+    { account = "def-bengioy_gpu", partition = "gpubase_bygpu_b2", gpus-per-node = "h100:2" },
+]

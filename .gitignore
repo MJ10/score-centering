@@ -6,6 +6,7 @@ wandb
 private
 deprecated
 debug.py
+# Also the cluv symlink to the $SCRATCH results dir, created on clusters by `cluv sync`.
 logs
 .venv/
 .pytest_cache/
