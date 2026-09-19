@@ -89,7 +89,8 @@ time = "3:00:00"
 
 [tool.cluv.clusters.mila]
 env = { UV_OFFLINE = "0", WANDB_MODE = "online", HF_HUB_OFFLINE = "0", HF_DATASETS_OFFLINE = "0" }
-sbatch_args = { partition = "main", gpus-per-node = "a100l:2" }
+# The main partition QOS caps each user at cpu=8, gpu=2, mem=48G.
+sbatch_args = { partition = "main", gpus-per-node = "a100l:2", cpus-per-task = 8, mem = "48G" }
 
 [tool.cluv.clusters.tamia]
 sbatch_args = { account = "aip-bengioy", partition = "gpubase_bynode_b2", gpus-per-node = "h100:4" }
