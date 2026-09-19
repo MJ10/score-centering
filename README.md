@@ -158,9 +158,9 @@ cluv submit mila -- python train_rl.py model.source=Qwen/Qwen3-0.6B \
   env.id=countdown env.prompt_format=chat rl.sc=true sampler.vocab_logprobs=128
 ```
 
-Flags placed before `--` go to `sbatch` and override the defaults in `pyproject.toml`, e.g. `cluv submit fir --time=12:00:00 --gpus-per-node=h100:4 -- python train_rl.py ...`. Use `cluv submit first -- ...` to submit to every connected cluster and keep the first job that starts.
+Flags placed before `--` go to `sbatch` and override the defaults in `pyproject.toml`, e.g. `cluv submit fir --time=12:00:00 --gpus-per-node=h100:4 -- python train_rl.py ...`. Use `cluv submit first -- ...` to submit to every connected cluster and keep the first job that starts. Mila's `main` partition caps each user at 8 CPUs, 2 GPUs and 48G of memory, so the mila defaults stay within that.
 
-Each job runs in its own directory `$SCRATCH/score-centering/<cluster>_<jobid>/` containing the Slurm log; the job script points `log.dir` there, so the run's `config.json` and metrics land next to it. `cluv sync` rsyncs these directories back to `$SCRATCH/score-centering` locally (`~/scratch/score-centering` on a laptop).
+Each job runs in its own directory `$SCRATCH/score-centering/<cluster>_<jobid>/` containing the Slurm log; the job script reads that path from `scontrol` and points `log.dir` there, so the run's `config.json` and metrics land next to it. `cluv sync` rsyncs these directories back to `$SCRATCH/score-centering` locally (`~/scratch/score-centering` on a laptop).
 
 Compute nodes on the DRAC clusters have no internet access, so jobs there default to `UV_OFFLINE=1`, `WANDB_MODE=offline` and `HF_HUB_OFFLINE=1` (Mila overrides these to online). Before submitting to an offline cluster, download the weights on its login node:
 
