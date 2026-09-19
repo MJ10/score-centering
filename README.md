@@ -170,6 +170,14 @@ cluv run tamia python scripts/prefetch.py Qwen/Qwen3-0.6B
 
 This fills `$SCRATCH/postax/weights` (`POSTAX_WEIGHTS_DIR`), which the job script passes as `model.weights_dir`. Upload offline W&B runs afterwards with `wandb sync`.
 
+DRAC home directories have small quotas, and the CUDA wheels alone take several GB. Keep uv's cache and the project environment on scratch on each cluster before the first sync:
+
+```bash
+mkdir -p ~/.config/uv $SCRATCH/.cache/uv $SCRATCH/venvs/score-centering
+printf 'cache-dir = "%s/.cache/uv"\n' "$SCRATCH" > ~/.config/uv/uv.toml
+ln -s $SCRATCH/venvs/score-centering ~/Projects/score-centering/.venv
+```
+
 The W&B sweeps in [`sweeps/`](sweeps/) run unchanged through the same job script: create the sweep locally with `wandb sweep sweeps/06b_quant_stale.yaml`, then launch agents with `cluv submit mila -- wandb agent <entity>/score-centering/<sweep-id>`.
 
 ## Citation
