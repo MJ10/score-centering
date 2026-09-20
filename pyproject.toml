@@ -103,8 +103,9 @@ sbatch_args = [
 ]
 
 [tool.cluv.clusters.fir]
-# One submission per allocation; cluv keeps the first to start and cancels the rest.
+# Per-GPU partitions (gpubase_bygpu_b2: MaxTime 12h); one submission per allocation,
+# cluv keeps the first to start and cancels the rest.
 sbatch_args = [
-    { account = "rrg-bengioy-ad_gpu", partition = "gpubase_bygpu_b2", gpus-per-node = "h100:2" },
-    { account = "def-bengioy_gpu", partition = "gpubase_bygpu_b2", gpus-per-node = "h100:2" },
+    { account = "rrg-bengioy-ad_gpu", partition = "gpubase_bygpu_b2", gpus-per-node = "h100:1", cpus-per-task = 8, mem = "64G" },
+    { account = "def-bengioy_gpu", partition = "gpubase_bygpu_b2", gpus-per-node = "h100:1", cpus-per-task = 8, mem = "64G" },
 ]
