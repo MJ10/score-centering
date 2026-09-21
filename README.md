@@ -116,6 +116,8 @@ python train_rl.py model.source=Qwen/Qwen3-0.6B \
   opt.optimizer=sgd opt.lr=0.01
 ```
 
+The trainer also implements Trajectory Balance with Asynchrony ([Bartoldson et al., 2025](https://arxiv.org/abs/2503.18929)) without importance sampling, as a drop-in advantage: `rl.tb.enabled=true rl.tb.beta=0.01 rl.tb.reset_every=50` replaces the group-centered advantage with `(r - mean r) - beta * (log pi/pi_ref - mean)` over each group, with the reference reset to the trainer every `reset_every` steps. It composes with `rl.sc` and the IS grid.
+
 Use `log.wandb_mode=disabled` to run without W&B. Models are cached in `~/.cache/postax/weights`; configurations and metrics go to `outputs/`. Pretraining/SFT and DPO use `train_lm.py` and `train_dpo.py`.
 
 ## Paper sweeps

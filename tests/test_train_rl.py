@@ -16,7 +16,7 @@ def run_training(
         is_stat="ratio", is_low=0.0, is_high="inf", is_outside="drop",
         is_inside="ratio", is_sign="both", minibatches=1, kv_quant_bits=0,
         weight_quant=None, weight_quant_group=0, eval_enabled=False,
-        vocab_logprobs=16):
+        vocab_logprobs=16, tb_beta=None, tb_reset_every=50):
     weights_dir = os.path.expanduser("~/.cache/postax/weights")
     command = [
         sys.executable,
@@ -48,6 +48,9 @@ def run_training(
         f"rl.is.inside={is_inside}",
         f"rl.is.sign={is_sign}",
         f"rl.minibatches={minibatches}",
+        f"rl.tb.enabled={str(tb_beta is not None).lower()}",
+        f"rl.tb.beta={tb_beta if tb_beta is not None else 0.0}",
+        f"rl.tb.reset_every={tb_reset_every}",
         f"stop.steps={steps}",
         f"eval.enabled={str(eval_enabled).lower()}",
         "eval.num_prompts=2",
@@ -181,12 +184,21 @@ def main():
     assert math.isfinite(weight_quant["loss"])
     assert weight_quant["logp_absdiff_samp_train"] > 0
 
+    # Trajectory balance (TBA without IS): the reference is reset every
+    # reset_every steps, and the KL term composes with score centering.
+    tb = run_training(
+        steps=3, weight_noise_scale=0.01, score_center=True,
+        tb_beta=0.1, tb_reset_every=2)
+    assert all(math.isfinite(row["loss"]) for row in tb)
+    assert all(math.isfinite(row["tb_log_ratio_mean"]) for row in tb)
+    assert all(0 <= row["tb_adv_kl_frac"] <= 1 + 1e-6 for row in tb)
+
     print(
         "ok: synchronous loop, stale sampler, fixed TIM noise, the IS grid "
         "(TIS, MIS, PPO, DPPO, seq_mean and seq_sum levels), quantization, "
         "weight fake-quant, "
-        "KV fake-quant, overlong prompts, and score centering (full + "
-        "topk)")
+        "KV fake-quant, overlong prompts, trajectory balance, and score "
+        "centering (full + topk)")
 
 
 if __name__ == "__main__":
