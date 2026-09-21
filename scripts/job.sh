@@ -60,6 +60,17 @@ if [[ "${command[0]}" == python* && "${command[1]:-}" == train_*.py ]]; then
     fi
 fi
 
+# A node can come up with fewer visible GPUs than Slurm allocated (fir
+# fc10501, 2026-09-21: 3 of 4). Fail fast instead of training on a lopsided
+# mesh; the job will be requeued elsewhere by a resubmit.
+if [[ -n "${SLURM_GPUS_ON_NODE:-}" ]] && command -v nvidia-smi >/dev/null; then
+    visible=$(nvidia-smi -L 2>/dev/null | wc -l | tr -d " ")
+    if (( visible < SLURM_GPUS_ON_NODE )); then
+        echo "Only $visible of $SLURM_GPUS_ON_NODE allocated GPUs are visible on $(hostname); aborting." >&2
+        exit 3
+    fi
+fi
+
 echo "GIT_COMMIT=${GIT_COMMIT:-unknown}"
 echo "Run directory: $run_dir"
 printf 'Running command:'
