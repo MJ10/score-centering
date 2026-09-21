@@ -6,7 +6,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
-from jax.sharding import PartitionSpec as P
+from jax.sharding import PartitionSpec as P, reshard
 
 
 RL_REWARD_MODES = (
@@ -122,6 +122,62 @@ def compute_advantages(rewards, group_size, reward_mode):
         groups = advantages.reshape(-1, group_size)
         advantages = (groups - groups.mean(axis=1, keepdims=True)).reshape(-1)
     return advantages
+
+
+def tb_advantages(rewards, seq_logp_theta, seq_logp_ref, group_size, beta):
+    """Trajectory-balance (VarGrad) advantages for REINFORCE.
+
+    Bartoldson et al. (2025, Appendix A, Eq. 12): the gradient of the VarGrad
+    TB loss with reward R = pi_ref * exp(r / beta) equals, up to a positive
+    constant, sum_j A_j grad log pi_theta(y_j) with
+
+        A_j = (r_j - mean_j r) - beta * (l_j - mean_j l),
+        l_j = log pi_theta(y_j | x) - log pi_ref(y_j | x),
+
+    where the means run over the K responses to the same prompt (the batch
+    estimate of log Z). Both log-probs are detached: the l term enters as a
+    reward, not through the policy gradient. This is TBA without importance
+    sampling. Rewards are mapped to +1/-1 like every other arm in this repo
+    (compute_advantages), so beta = 0 reproduces reward_mode=group_centered
+    exactly and the comparison isolates the KL term; beta therefore acts on
+    a reward scale twice the TBA paper's 0/1 rewards.
+    """
+    r = np.where(np.asarray(rewards) > 0, 1.0, -1.0).astype(np.float32)
+    r = r.reshape(-1, group_size)
+    l = (np.asarray(seq_logp_theta, np.float32)
+         - np.asarray(seq_logp_ref, np.float32)).reshape(-1, group_size)
+    a = (r - r.mean(1, keepdims=True)) - beta * (l - l.mean(1, keepdims=True))
+    return a.reshape(-1).astype(np.float32)
+
+
+@partial(jax.jit, static_argnames=("forward", "head", "chunk", "pad_id"))
+def sequence_logprobs(forward, head, weights, batch, pad_id, chunk=128):
+    """Detached per-sequence sum of trainer-side log p(y_t | y_<t) over
+    completion tokens, in rematerialized chunks like loss_fn_rl.
+    `head(x, weights)` maps pre-head activations to logits."""
+    _, target_tokens, target_mask = get_batch_targets(
+        batch["tokens"], batch["mask"])
+    hidden = forward(batch["tokens"], weights, logits=False,
+                     live=batch["tokens"] != pad_id)
+    seq_len = target_tokens.shape[1]
+
+    # The carry takes the batch-axis sharding of the token logprobs so the
+    # scan carry type is stable (see loss_fn_rl's per_seq accumulators).
+    seq_spec = P(jax.typeof(hidden).sharding.spec[0])
+
+    def chunk_sum(acc, start):
+        slc = lambda x: jax.lax.dynamic_slice_in_dim(x, start, chunk, axis=1)
+        vocab_logprobs = jax.nn.log_softmax(
+            head(slc(hidden), weights).astype(jnp.float32))
+        token_logprobs = take_vocab(
+            vocab_logprobs, slc(target_tokens)[..., None])[..., 0]
+        chunk_total = (token_logprobs * slc(target_mask)).sum(-1)
+        return acc + reshard(chunk_total, seq_spec), None
+
+    init = jnp.zeros(target_tokens.shape[0], jnp.float32, out_sharding=seq_spec)
+    total, _ = jax.lax.scan(
+        jax.checkpoint(chunk_sum), init, jnp.arange(0, seq_len, chunk))
+    return jax.lax.stop_gradient(total)
 
 
 IS_LEVELS = ("token", "seq_mean", "seq_sum")

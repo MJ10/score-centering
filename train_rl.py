@@ -70,6 +70,13 @@ rl:
                    # | ppo = PPO band: pos (0, high], neg [low, 3.0] (dual clip)
   minibatches: 1  # optimizer steps per rollout batch: contiguous group-aligned
                   # slices in fixed order (PPO-style multi-step)
+  tb:  # Trajectory Balance with Asynchrony (Bartoldson et al. 2025), no IS:
+       # REINFORCE with A = (r - mean r) - beta * (l - mean l), where l is the
+       # detached trainer-vs-reference sequence log-ratio and means are over
+       # the group (VarGrad log Z). Overrides reward_mode when enabled.
+    enabled: false
+    beta: 0.01        # KL coefficient; TBA' uses 0.005 on 0/1 rewards, ours are +/-1
+    reset_every: 50   # steps between reference resets to the trainer (0 = never)
 env:
   id: countdown
   args: null
@@ -219,6 +226,25 @@ def train(cfg):
     # Eval always samples clean bf16 (no weight/KV quant, no noise): it
     # measures what the policy learned, not how the sampler executes it.
     eval_forward = partial(model.forward, dtype=jnp.bfloat16)
+
+    tb = cfg.rl.tb
+    ref_weights = None
+    if tb.enabled:
+        # Reference policy pi_ref for the TB reward R = pi_ref * exp(r / beta):
+        # a bf16 copy of the trainer, reset to the trainer every reset_every
+        # steps (TBA' style). Kept in bf16 to halve its footprint; log-ratios
+        # are evaluated with the same trainer forward for both policies so
+        # the only difference is the weights.
+        snapshot_ref = jax.jit(lambda w: {
+            k: v.astype(jnp.bfloat16) if v.ndim > 1 and "norm" not in k else v
+            for k, v in w.items()})
+        ref_weights = snapshot_ref(model.weights)
+        head_dtype = jnp.dtype(cfg.dtypes.trainer)
+
+        def seq_logprobs(weights, logp_batch):
+            return losses.sequence_logprobs(
+                trainer_forward, partial(model.head, dtype=head_dtype),
+                weights, logp_batch, pad_id=model.tokenizer.pad_token_id)
 
     total_steps = cfg.stop.steps
     # The LR schedule counts optimizer steps, not rollouts.
@@ -396,7 +422,30 @@ def train(cfg):
         (tokens, sampling_token_logprobs, sampling_vocab_logprobs, mask, rewards,
          completion_lengths, truncated, centering, frac_parsed) = sample(
              rows, sampler_weights, sample_key, cfg.sampler.vocab_logprobs)
-        advantages = losses.compute_advantages(rewards, group_size, cfg.rl.reward_mode)
+        tb_metrics = {}
+        if tb.enabled:
+            if tb.reset_every and step and step % tb.reset_every == 0:
+                ref_weights = snapshot_ref(model.weights)
+            logp_batch = {"tokens": tokens,
+                          "mask": jax.device_put(mask, token_sharding)}
+            seq_logp_theta = np.asarray(seq_logprobs(model.weights, logp_batch))
+            seq_logp_ref = np.asarray(seq_logprobs(ref_weights, logp_batch))
+            advantages = losses.tb_advantages(
+                rewards, seq_logp_theta, seq_logp_ref, group_size, tb.beta)
+            log_ratio = seq_logp_theta - seq_logp_ref
+            groups = log_ratio.reshape(-1, group_size)
+            centered_ratio = (groups - groups.mean(1, keepdims=True)).reshape(-1)
+            tb_metrics = {
+                # Sequence-level log pi_theta/pi_ref: the KL(theta||ref) estimate.
+                "tb_log_ratio_mean": float(log_ratio.mean()),
+                "tb_log_ratio_absmean": float(np.abs(log_ratio).mean()),
+                # Share of the advantage magnitude that comes from the KL term.
+                "tb_adv_kl_frac": float(
+                    tb.beta * np.abs(centered_ratio).mean()
+                    / max(np.abs(advantages).mean(), 1e-8)),
+            }
+        else:
+            advantages = losses.compute_advantages(rewards, group_size, cfg.rl.reward_mode)
         # stop run if reward collapses
         reward = rewards.mean()
         peak_reward = max(peak_reward, reward)
@@ -447,6 +496,7 @@ def train(cfg):
                 "collapsed": collapsed,
                 "weight_norm": utils.weight_norm(model.weights),
                 **optimizer_metrics,
+                **tb_metrics,
                 **eval_metrics,
             }
             utils.log_metrics(step, metrics, run_dir)
@@ -533,6 +583,13 @@ def main():
         if isc.level is not None and isc.stat != "ratio":
             raise ValueError(
                 "score centering composes only with rl.is.stat=ratio")
+    if cfg.rl.tb.enabled:
+        if cfg.rl.tb.beta < 0:
+            raise ValueError("rl.tb.beta must be non-negative")
+        if cfg.rl.tb.reset_every < 0:
+            raise ValueError("rl.tb.reset_every must be non-negative")
+        if cfg.rl.group_size < 2:
+            raise ValueError("rl.tb requires rl.group_size >= 2 (batch log Z)")
     if cfg.rl.group_size < 1 or cfg.rl.num_prompts < 1:
         raise ValueError("rl.group_size and rl.num_prompts must be positive")
     if cfg.stop.steps < 1:
